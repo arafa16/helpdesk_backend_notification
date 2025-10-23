@@ -8,6 +8,7 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const multer = require("multer");
 const {
   findActivity,
+  findTicketByHour,
 } = require("./src/controllers/ticket_activity.controller");
 
 const app = express();
@@ -101,12 +102,80 @@ ${link_ticket}`;
   return { messageId, ticket_display_name, data: dataActivity.data };
 };
 
+const sendMessageByTimeToJobPosition = async () => {
+  console.log("check by time");
+
+  const datas = await findTicketByHour();
+
+  let messageId = [];
+  let ticket_display_name = null;
+  let ticket_status_name = null;
+  let contact = [];
+
+  if (datas.data !== null) {
+    if (datas.users !== null) {
+      datas.users.map((user) => {
+        contact.push(user.phone_number);
+      });
+    } else {
+      datas.data.reminder = false;
+      datas.data.schedule_reminder = null;
+
+      await datas.data.save();
+
+      console.log("finish check activity");
+
+      return {
+        message: `Number not found`,
+      };
+    }
+
+    const link_ticket =
+      process.env.LINK_FRONTEND +
+      "/ticket/view/" +
+      datas?.data?.ticket?.uuid +
+      "?back=/";
+
+    ticket_display_name = datas?.data?.ticket?.display_name;
+
+    //message whatsapp
+    const whatsapp_message = `${ticket_display_name}
+ticket reminder for you, please check duration ticket on this link :
+${link_ticket}`;
+
+    contact.map(async (data_contact) => {
+      let contact_client = await client.getNumberId(data_contact);
+
+      if (contact_client !== null) {
+        let formattedNumber = contact_client._serialized;
+        console.log(formattedNumber, "formattedNumber");
+        const response = client.sendMessage(formattedNumber, whatsapp_message);
+        messageId.push(response?.id?._serialized);
+      }
+
+      console.log(contact_client, "response");
+    });
+
+    datas.data.reminder = false;
+    datas.data.schedule_reminder = null;
+
+    await datas.data.save();
+  } else {
+    console.log("overall the activity is good");
+  }
+
+  console.log("finish check activity");
+
+  return;
+};
+
 client.on("ready", () => {
   app.use(upload.array());
 
   //cron
   cron.schedule(process.env.CRON_TIME, function () {
-    sendMessage();
+    // sendMessage();
+    sendMessageByTimeToJobPosition();
   });
 
   app.post("/api/v1/send-message", async (req, res) => {

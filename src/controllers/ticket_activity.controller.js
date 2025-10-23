@@ -4,17 +4,14 @@ const {
   ticket_user_reminder: ticketUserReminderModel,
   user: userModel,
   ticket_status: ticketStatusModel,
+  ticket_job_position_reminder: ticketJobPositionReminderModel,
 } = require("../models/index.js");
 const nodemailer = require("nodemailer");
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
 const dayjs = require("dayjs");
 
 const findActivity = async () => {
   let date = Date.now();
-
-  // date = dayjs(date).format("YYYY-MM-DD HH:mm:ss");
-
-  console.log(date, "date");
 
   const data = await ticketActivityModel.findOne({
     where: {
@@ -46,9 +43,91 @@ const findActivity = async () => {
     attributes: ["id", "uuid", "reminder", "schedule_reminder"],
   });
 
-  data && console.log(data?.id, "data id");
-
   return { data };
+};
+
+const findTicketByHour = async () => {
+  let date = Date.now();
+
+  const data = await ticketJobPositionReminderModel.findOne({
+    where: {
+      reminder: true,
+      schedule_reminder: {
+        [Op.lt]: date,
+      },
+    },
+    include: [
+      {
+        model: ticketModel,
+        attributes: ["uuid", "display_name"],
+      },
+    ],
+    order: [["id", "ASC"]],
+    attributes: [
+      "id",
+      "uuid",
+      "job_position_id",
+      "reminder",
+      "schedule_reminder",
+    ],
+  });
+
+  let users = null;
+
+  if (data !== null) {
+    const findUsers = await userModel.findAll({
+      where: {
+        job_position_id: data.job_position_id,
+      },
+      attributes: ["name", "phone_number"],
+    });
+
+    users = findUsers;
+  }
+
+  return { data, users };
+};
+
+const findTicketByHours = async (req, res) => {
+  let date = Date.now();
+
+  const data = await ticketJobPositionReminderModel.findOne({
+    where: {
+      reminder: true,
+      schedule_reminder: {
+        [Op.lt]: date,
+      },
+    },
+    include: [
+      {
+        model: ticketModel,
+        attributes: ["uuid", "display_name"],
+      },
+    ],
+    order: [["id", "ASC"]],
+    attributes: [
+      "id",
+      "uuid",
+      "job_position_id",
+      "reminder",
+      "schedule_reminder",
+    ],
+  });
+
+  let users = null;
+
+  if (data !== null) {
+    const findUsers = await userModel.findAll({
+      where: {
+        job_position_id: data.job_position_id,
+      },
+      attributes: ["name", "phone_number"],
+    });
+
+    users = findUsers;
+  }
+
+  return res.status(200).json({ data, users });
 };
 
 const checkTicketActivity = async (req, res) => {
@@ -91,4 +170,6 @@ const checkTicketActivity = async (req, res) => {
 module.exports = {
   checkTicketActivity,
   findActivity,
+  findTicketByHours,
+  findTicketByHour,
 };
