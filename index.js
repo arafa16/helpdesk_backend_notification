@@ -20,7 +20,12 @@ app.use(express.json());
 const upload = multer();
 
 const client = new Client({
-  authStrategy: new LocalAuth(),
+  puppeteer: {
+    executablePath: "/usr/bin/chromium-browser", // or 'chromium'
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    authStrategy: new LocalAuth(),
+  },
 });
 
 app.use("/api/v1/ticket_activity", ticket_activity_router);
@@ -109,7 +114,6 @@ const sendMessageByTimeToJobPosition = async () => {
 
   let messageId = [];
   let ticket_display_name = null;
-  let ticket_status_name = null;
   let contact = [];
 
   if (datas.data !== null) {
