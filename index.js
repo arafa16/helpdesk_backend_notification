@@ -178,7 +178,7 @@ client.on("ready", () => {
 
   //cron
   cron.schedule(process.env.CRON_TIME, function () {
-    // sendMessage();
+    sendMessage();
     sendMessageByTimeToJobPosition();
   });
 
